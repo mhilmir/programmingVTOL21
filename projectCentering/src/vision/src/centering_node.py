@@ -201,7 +201,7 @@ if __name__ == '__main__':
         x1 = x + int(w/2)  # x_center of target
         y1 = y + int(h/2)  # y_center of target
 
-        cv.circle(frame, (int(b/2),int(a/2)), 10, (255,0,0), 2)
+        cv.circle(frame, (int(b/2),int(a/2)), 20, (255,0,0), 2)
         cv.circle(frame, (x1, y1), 1, (255, 0, 0), 2)
 
         jarakx = int(x1 - b/2)
@@ -214,7 +214,7 @@ if __name__ == '__main__':
         tcy.publish(float(y1))
         ctr.publish(False)
 
-        if jarak < 10:
+        if jarak < 20:
             cv.putText(frame, "Centered (" + str(x1) + ", " + str(y1) + ")", (200,50), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
             ctr.publish(True)
 

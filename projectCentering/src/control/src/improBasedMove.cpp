@@ -168,8 +168,6 @@ int main(int argc, char **argv)
     }
 
     // move to center
-    bool isCount = false;
-    ros::Time t0;
     double gazebo_cc_x, gazebo_cc_y, gazebo_tc_x, gazebo_tc_y;
     while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
         gazebo_cc_x = (cc_x.data/20) * 0.25;
@@ -181,23 +179,31 @@ int main(int argc, char **argv)
             vel.linear.y = mypid_y.calculate(gazebo_cc_x, gazebo_tc_x);
             vel.linear.z = mypid_z.calculate(gazebo_cc_y, gazebo_tc_y);
         } else if(ctr.data == true){
-            vel.linear.x = 0.2;
+            vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
             vel.linear.y = mypid_y.calculate(gazebo_cc_x, gazebo_tc_x);
             vel.linear.z = mypid_z.calculate(gazebo_cc_y, gazebo_tc_y);
         }
 
         if((ctr.data == true) && (current_position.pose.position.x >= wp[2][0])){
-            // vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
-            // vel.linear.y = mypid_y.calculate(gazebo_cc_x, gazebo_tc_x);
-            // vel.linear.z = mypid_z.calculate(gazebo_cc_y, gazebo_tc_y);
-            // if(isCount == false){
-            //     t0 = ros::Time::now();
-            //     isCount == true;
-            // } else if((isCount == true) && (ros::Time::now()-t0 > ros::Duration(4))){
             break;
-            // }
-
         }
+        cmd_pub.publish(vel);
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    // for delay
+    ros::Time t0 = ros::Time::now();
+    while(ros::Time::now() - t0 < ros::Duration(3)){
+        gazebo_cc_x = (cc_x.data/20) * 0.25;
+        gazebo_cc_y = (cc_y.data/20) * 0.25;
+        gazebo_tc_x = (tc_x.data/20) * 0.25;
+        gazebo_tc_y = (tc_y.data/20) * 0.25;
+
+        vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
+        vel.linear.y = mypid_y.calculate(gazebo_cc_x, gazebo_tc_x);
+        vel.linear.z = mypid_z.calculate(gazebo_cc_y, gazebo_tc_y);
+
         cmd_pub.publish(vel);
         ros::spinOnce();
         rate.sleep();
@@ -216,49 +222,6 @@ int main(int argc, char **argv)
         ros::spinOnce();
         rate.sleep();
     }
-
-    
-    // // for delay
-    // ros::Time t0 = ros::Time::now();
-    // while(ros::Time::now() - t0 < ros::Duration(3)){
-    //     vel.linear.x = mypid_x.calculate(wp[1][0], current_position.pose.position.x);
-    //     vel.linear.y = mypid_y.calculate(wp[1][1], current_position.pose.position.y);
-    //     vel.linear.z = mypid_z.calculate(wp[1][2], current_position.pose.position.z);
-    //     cmd_pub.publish(vel);
-    //     ros::spinOnce();
-    //     rate.sleep();
-    // }
-
-    // // to waypoint and wait
-    // bool isLanding = false;
-    // while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
-    //     if(ctr.data == false){
-    //         vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
-    //         vel.linear.y = mypid_y.calculate(wp[2][1], current_position.pose.position.y);
-    //         vel.linear.z = mypid_z.calculate(wp[2][2], current_position.pose.position.z);
-    //         t0 = ros::Time::now();
-    //     } else if((measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[2][0], wp[2][1], wp[2][2]) < 0.2) && (ctr.data == true)){
-    //         isLanding = true;
-    //         break;
-    //     }
-    //     cmd_pub.publish(vel);
-    //     ros::spinOnce();
-    //     rate.sleep();
-    // }
-
-    // // landing bosskuh
-    // while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed && isLanding == true){
-    //     vel.linear.x = mypid_x.calculate(wp[3][0], current_position.pose.position.x);
-    //     vel.linear.y = mypid_y.calculate(wp[3][1], current_position.pose.position.y);
-    //     vel.linear.z = mypid_z.calculate(wp[3][2], current_position.pose.position.z);
-        
-    //     if(measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[3][0], wp[3][1], wp[3][2])){
-    //         break;
-    //     }
-    //     cmd_pub.publish(vel);
-    //     ros::spinOnce();
-    //     rate.sleep();
-    // }
 
     return 0;
 }
