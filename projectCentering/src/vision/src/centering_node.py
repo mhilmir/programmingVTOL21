@@ -149,6 +149,7 @@ if __name__ == '__main__':
     ccy = rospy.Publisher('cc/y', Float32, queue_size=10) #ccy = camera center y position
     tcx = rospy.Publisher('tc/x', Float32, queue_size=10) #tcx = target center x position
     tcy = rospy.Publisher('tc/y', Float32, queue_size=10) #tcy = target center y position
+
     ctr = rospy.Publisher('ctr', Bool, queue_size=10) #ctr  = centered boolean
     rospy.init_node('centering_node')
     rate = rospy.Rate(50)
@@ -193,30 +194,39 @@ if __name__ == '__main__':
         contours, hierarchy = cv.findContours(thresh, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
         # print("Number of contours:" + str(len(contours)))
 
-        sorted_contours = sorted(contours, key=cv.contourArea, reverse=True)
-        
-        cv.drawContours(frame, sorted_contours[0], -1, (255, 0, 0), 2)
-        x, y, w, h = cv.boundingRect(sorted_contours[0])
-        cv.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 255), 3)
-        x1 = x + int(w/2)  # x_center of target
-        y1 = y + int(h/2)  # y_center of target
+        try:
+            sorted_contours = sorted(contours, key=cv.contourArea, reverse=True)
+            
+            if(cv.contourArea(sorted_contours[0]) > 4000):
+                cv.drawContours(frame, sorted_contours[0], -1, (255, 0, 0), 2)
+                x, y, w, h = cv.boundingRect(sorted_contours[0])
+                cv.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 255), 3)
+                x1 = x + int(w/2)  # x_center of target
+                y1 = y + int(h/2)  # y_center of target
 
-        cv.circle(frame, (int(b/2),int(a/2)), 20, (255,0,0), 2)
-        cv.circle(frame, (x1, y1), 1, (255, 0, 0), 2)
+                cv.circle(frame, (int(b/2),int(a/2)), 20, (255,0,0), 2)
+                cv.circle(frame, (x1, y1), 1, (255, 0, 0), 2)
 
-        jarakx = int(x1 - b/2)
-        jaraky = int(y1 - a/2)
-        jarak = math.sqrt(jarakx**2 + jaraky**2)
+                jarakx = int(x1 - b/2)
+                jaraky = int(y1 - a/2)
+                jarak = math.sqrt(jarakx**2 + jaraky**2)
 
-        ccx.publish(float(b/2))
-        ccy.publish(float(a/2))
-        tcx.publish(float(x1))
-        tcy.publish(float(y1))
-        ctr.publish(False)
+                ccx.publish(float(b/2))
+                ccy.publish(float(a/2))
+                tcx.publish(float(x1))
+                tcy.publish(float(y1))
+                ctr.publish(False)
 
-        if jarak < 20:
-            cv.putText(frame, "Centered (" + str(x1) + ", " + str(y1) + ")", (200,50), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
-            ctr.publish(True)
+                if jarak < 20:
+                    cv.putText(frame, "Centered (" + str(x1) + ", " + str(y1) + ")", (200,50), cv.FONT_HERSHEY_DUPLEX, 1, (0,0,0), 2)
+                    ctr.publish(True)
+
+        except:
+            ccx.publish(0)
+            ccy.publish(0)
+            tcx.publish(0)
+            tcy.publish(0)
+            ctr.publish(False)
 
         cv.imshow('niggs1', frame)
 
