@@ -57,7 +57,7 @@ double measure_dist(double form_x, double form_y, double form_z, double dest_x, 
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "toWaypoint_node");
+    ros::init(argc, argv, "cameraFaceDown_node");
     ros::NodeHandle nh;
 
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
@@ -86,10 +86,11 @@ int main(int argc, char **argv)
     double max_speed = 0.5;
     std::cout << "input maximum speed (0 < v < 1), 0.5 recommended : ";
     std::cin >> max_speed;
-    PID mypid_x(dt, max_speed, -max_speed, 1.5, 0.15, 0);
-    PID mypid_y(dt, max_speed, -max_speed, 1.5, 0.15, 0);
-    PID mypid_z(dt, max_speed, -max_speed, 1.0, 0.6, 0);  // aman
+    PID mypid_x(dt, max_speed, -max_speed, 0.750, 0.050, 0);
+    PID mypid_y(dt, max_speed, -max_speed, 0.750, 0.050, 0);
+    PID mypid_z(dt, max_speed, -max_speed, 1.000, 0.600, 0);  // aman
 
+    //the setpoint publishing rate MUST be faster than 2Hz
     ros::Rate rate(1/dt);
 
     // wait for FCU connection
@@ -145,70 +146,140 @@ int main(int argc, char **argv)
 
     geometry_msgs::Twist vel;
 
-    double wp[4][3] = {
+    double wp[3][3] = {
         0, 0, 0,
-        0, 0, 3,
-        13.1564, 0.02, 2.3723,
-        13.1564, 0.02, 0
+        0, 0, 3.5,
+        5, 8, 3.5,
     };
 
     // takeoff
+    bool isCount = false;
+    ros::Time t0;
     while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
         vel.linear.x = mypid_x.calculate(wp[1][0], current_position.pose.position.x);
         vel.linear.y = mypid_y.calculate(wp[1][1], current_position.pose.position.y);
         vel.linear.z = mypid_z.calculate(wp[1][2], current_position.pose.position.z);
 
         if(measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[1][0], wp[1][1], wp[1][2]) < 0.2){
-            ROS_INFO("Takeoff completed");
-            break;
+            if(isCount == false){
+                t0 = ros::Time::now();
+                isCount = true;
+            }else if( (isCount == true) && (ros::Time::now()-t0 > ros::Duration(4))){
+                ROS_INFO("Takeoff completed");
+                break;
+            }
         }
+
+        ROS_INFO("%lf", measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[1][0], wp[1][1], wp[1][2]));
         cmd_pub.publish(vel);
         ros::spinOnce();
         rate.sleep();
     }
 
-    // for delay
-    ros::Time t0 = ros::Time::now();
-    while(ros::Time::now() - t0 < ros::Duration(3)){
-        vel.linear.x = mypid_x.calculate(wp[1][0], current_position.pose.position.x);
-        vel.linear.y = mypid_y.calculate(wp[1][1], current_position.pose.position.y);
-        vel.linear.z = mypid_z.calculate(wp[1][2], current_position.pose.position.z);
-        cmd_pub.publish(vel);
-        ros::spinOnce();
-        rate.sleep();
-    }
-
-    // to waypoint and wait
-    bool isLanding = false;
+    // yok jalan
+    isCount = false;
+    double gazebo_cc_x, gazebo_cc_y, gazebo_tc_x, gazebo_tc_y;
     while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
-        if(ctr.data == false){
-            vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
-            vel.linear.y = mypid_y.calculate(wp[2][1], current_position.pose.position.y);
-            vel.linear.z = mypid_z.calculate(wp[2][2], current_position.pose.position.z);
-            t0 = ros::Time::now();
-        } else if((measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[2][0], wp[2][1], wp[2][2]) < 0.2) && (ctr.data == true)){
-            isLanding = true;
+        vel.linear.x = mypid_x.calculate(wp[2][0], current_position.pose.position.x);
+        vel.linear.y = mypid_y.calculate(wp[2][1], current_position.pose.position.y);
+        vel.linear.z = mypid_z.calculate(wp[2][2], current_position.pose.position.z);
+
+        if( (tc_x.data != 0) && (tc_y.data != 0) ){
             break;
+            // CENTERING JANGAN DITARUH SINI, MENDING DITARUH DI LOOP YANG BARU AJA, AKU KEMARIN NYOBA JADI RUSAK, KURANG TAU MASALAHNYA DIMANA
         }
+
         cmd_pub.publish(vel);
         ros::spinOnce();
         rate.sleep();
     }
 
-    // landing bosskuh
-    while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed && isLanding == true){
-        vel.linear.x = mypid_x.calculate(wp[3][0], current_position.pose.position.x);
-        vel.linear.y = mypid_y.calculate(wp[3][1], current_position.pose.position.y);
-        vel.linear.z = mypid_z.calculate(wp[3][2], current_position.pose.position.z);
-        
-        if(measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[3][0], wp[3][1], wp[3][2])){
-            break;
+    // centering
+    while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
+        gazebo_cc_x = ( (320-cc_x.data) / 20) * 0.25;
+        gazebo_cc_y = ( (240-cc_y.data) / 20) * 0.25;
+        gazebo_tc_x = ( (320-tc_x.data) / 20) * 0.25;
+        gazebo_tc_y = ( (240-tc_y.data) / 20) * 0.25;
+
+        vel.linear.x = -(mypid_x.calculate(gazebo_cc_y, gazebo_tc_y));
+        vel.linear.y = -(mypid_y.calculate(gazebo_cc_x, gazebo_tc_x));
+        vel.linear.z = mypid_z.calculate(wp[2][2], current_position.pose.position.z);
+
+        if(ctr.data == true){
+            if(isCount == false){
+                t0 = ros::Time::now();
+                isCount = true;
+            } else if((isCount == true) && (ros::Time::now()-t0 > ros::Duration(4))){
+                isCount = false;
+                break;
+            }
         }
+
+        // ROS_INFO("cc_x= %.3f, cc_y= %.3f, tc_x= %.3f, tc_y= %.3f", cc_x.data, cc_y.data, tc_x.data, tc_y.data);
+        // ROS_INFO("gaz_cc_x= %.3f, gaz_cc_y= %.3f, gaz_tc_x= %.3f, gaz_tc_y= %.3f", gazebo_cc_x, gazebo_cc_y, gazebo_tc_x, gazebo_tc_y);
+        // ROS_INFO("vel.linear.x= %.3f, vel.linear.y= %.3f", vel.linear.x, vel.linear.y);
+
         cmd_pub.publish(vel);
         ros::spinOnce();
         rate.sleep();
     }
 
+    // mau landing tapi bo'ong xixixie
+    while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
+        gazebo_cc_x = ( (320-cc_x.data) / 20) * 0.25;
+        gazebo_cc_y = ( (240-cc_y.data) / 20) * 0.25;
+        gazebo_tc_x = ( (320-tc_x.data) / 20) * 0.25;
+        gazebo_tc_y = ( (240-tc_y.data) / 20) * 0.25;
+
+        vel.linear.x = -(mypid_x.calculate(gazebo_cc_y, gazebo_tc_y));
+        vel.linear.y = -(mypid_y.calculate(gazebo_cc_x, gazebo_tc_x));
+        vel.linear.z = mypid_z.calculate(0.3, current_position.pose.position.z);
+
+        if( (ctr.data == true) && (current_position.pose.position.z > 0.2) && (current_position.pose.position.z < 0.4) ){
+            if(isCount == false){
+                t0 = ros::Time::now();
+                isCount = true;
+            } else if( (isCount == true) && (ros::Time::now()-t0 > ros::Duration(4)) ){
+                isCount = false;
+                break;
+            }
+        }
+
+        cmd_pub.publish(vel);
+        ros::spinOnce();
+        rate.sleep();
+    }
+
+    // misi selesai, back to home
+    while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
+        gazebo_cc_x = ( (320-cc_x.data) / 20) * 0.25;
+        gazebo_cc_y = ( (240-cc_y.data) / 20) * 0.25;
+        gazebo_tc_x = ( (320-tc_x.data) / 20) * 0.25;
+        gazebo_tc_y = ( (240-tc_y.data) / 20) * 0.25;
+
+        vel.linear.x = -(mypid_x.calculate(gazebo_cc_y, gazebo_tc_y));
+        vel.linear.y = -(mypid_y.calculate(gazebo_cc_x, gazebo_tc_x));
+        vel.linear.z = mypid_z.calculate(wp[2][2], current_position.pose.position.z);
+
+        if( (current_position.pose.position.z > 3.4) && (current_position.pose.position.z < 3.6) ){
+            vel.linear.x = mypid_x.calculate(wp[1][0], current_position.pose.position.x);
+            vel.linear.y = mypid_y.calculate(wp[1][1], current_position.pose.position.y);
+            vel.linear.z = mypid_z.calculate(wp[1][2], current_position.pose.position.z);
+        }
+        if( (current_position.pose.position.x > -0.1) && (current_position.pose.position.x < 0.1) 
+                    && (current_position.pose.position.y > -0.1) && (current_position.pose.position.y < 0.1) ){
+            vel.linear.x = mypid_x.calculate(wp[0][0], current_position.pose.position.x);
+            vel.linear.y = mypid_y.calculate(wp[0][1], current_position.pose.position.y);
+            vel.linear.z = mypid_z.calculate(wp[0][2], current_position.pose.position.z);
+        }
+
+        if(measure_dist(current_position.pose.position.x, current_position.pose.position.y, current_position.pose.position.z, wp[0][0], wp[0][1], wp[0][2]) < 0.2){
+            break;
+        }
+
+        cmd_pub.publish(vel);
+        ros::spinOnce();
+        rate.sleep();
+    }
     return 0;
 }
-

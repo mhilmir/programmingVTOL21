@@ -46,6 +46,27 @@ void auto_land_cb(const std_msgs::Bool::ConstPtr& msg){
     is_requesting_auto_land = *msg;
 }
 
+std_msgs::Float32 cc_x;
+void cc_x_callback(const std_msgs::Float32::ConstPtr& msg){
+    cc_x = * msg;
+}
+std_msgs::Float32 cc_y;
+void cc_y_callback(const std_msgs::Float32::ConstPtr& msg){
+    cc_y = * msg;
+}
+std_msgs::Float32 tc_x;
+void tc_x_callback(const std_msgs::Float32::ConstPtr& msg){
+    tc_x= * msg;
+}
+std_msgs::Float32 tc_y;
+void tc_y_callback(const std_msgs::Float32::ConstPtr& msg){
+    tc_y = * msg;
+}
+std_msgs::Bool ctr;
+void ctr_callback(const std_msgs::Bool::ConstPtr& msg){
+    ctr = *msg;
+}
+
 float jarak_titik(float tujuan_x, float tujuan_y, float tujuan_z, float asal_x, float asal_y, float asal_z){
     float jarak_x = tujuan_x - asal_x;
     float jarak_y = tujuan_y - asal_y;
@@ -87,7 +108,18 @@ int main(int argc, char **argv)
             ("/cmd_vel", 10, getVel);
     ros::Subscriber auto_land_sub = nh.subscribe<std_msgs::Bool> //subscribe trigger for autoland
             ("/auto_land_cmd", 10, auto_land_cb);
-    
+    ros::Subscriber cc_x_sub = nh.subscribe<std_msgs::Float32>
+            ("cc/x", 10, cc_x_callback);
+    ros::Subscriber cc_y_sub = nh.subscribe<std_msgs::Float32>
+            ("cc/y", 10, cc_y_callback);
+    ros::Subscriber tc_x_sub = nh.subscribe<std_msgs::Float32>
+            ("tc/x", 10, tc_x_callback);
+    ros::Subscriber tc_y_sub = nh.subscribe<std_msgs::Float32>
+            ("tc/y", 10, tc_y_callback);
+    ros::Subscriber ctr_sub = nh.subscribe<std_msgs::Bool>
+            ("ctr", 10, ctr_callback);
+
+
     //for wp
     // ros::Publisher wp_x = nh.advertise<std_msgs::Float32>
     //         ("wp/x", 10);
@@ -122,7 +154,7 @@ int main(int argc, char **argv)
     }
 
     printf("STARTING MISSION\n");
-    //the setpoint publishing rate MUST be faster than 2Hz
+    
     ros::Rate rate(1/dt);
 
     // wait for FCU connection
@@ -215,6 +247,10 @@ int main(int argc, char **argv)
     if(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed) ROS_INFO("START TELEOP MODE");
     //Teleop mode
     while(ros::ok() && current_state.mode == "OFFBOARD" && current_state.armed){
+        // ROS_INFO("cc_x= %f  |  cc_y= %f\n", cc_x.data, cc_y.data);
+        // ROS_INFO("tc_x= %f  |  tc_y= %f\n", tc_x.data, tc_y.data);
+        // ROS_INFO("is centered= %i", ctr.data);
+
         //check if there is no teleop input
         // if(velocity_empty(curTeleVel))
         // {   

@@ -137,7 +137,9 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(teleop_node src/teleopfix.cpp)
 add_executable(toWaypoint_node src/toWaypoint.cpp)
-add_executable(improBasedMove_node src/improBasedMove.cpp)
+add_executable(cameraFaceForward_node src/cameraFaceForward.cpp)
+add_executable(cameraFaceDown_node src/cameraFaceDown.cpp)
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -156,7 +158,10 @@ target_link_libraries(teleop_node
 target_link_libraries(toWaypoint_node
     ${catkin_LIBRARIES}
 )
-target_link_libraries(improBasedMove_node
+target_link_libraries(cameraFaceForward_node
+    ${catkin_LIBRARIES}
+)
+target_link_libraries(cameraFaceDown_node
     ${catkin_LIBRARIES}
 )
 

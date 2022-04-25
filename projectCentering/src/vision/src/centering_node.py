@@ -152,17 +152,17 @@ if __name__ == '__main__':
 
     ctr = rospy.Publisher('ctr', Bool, queue_size=10) #ctr  = centered boolean
     rospy.init_node('centering_node')
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(20)
 
     # Add port= if is necessary to use a different one
     video = Video()
     cv.namedWindow('centering')
     cv.resizeWindow('centering',400, 300)
 
-    cv.createTrackbar('hl', 'centering', 25, 179, nothing)
+    cv.createTrackbar('hl', 'centering', 146, 179, nothing)
     cv.createTrackbar('sl', 'centering', 50, 255, nothing)
     cv.createTrackbar('vl', 'centering', 50, 255, nothing)
-    cv.createTrackbar('hu', 'centering', 35, 179, nothing)
+    cv.createTrackbar('hu', 'centering', 166, 179, nothing)
     cv.createTrackbar('su', 'centering', 255, 255, nothing)
     cv.createTrackbar('vu', 'centering', 255, 255, nothing)
 
@@ -196,8 +196,8 @@ if __name__ == '__main__':
 
         try:
             sorted_contours = sorted(contours, key=cv.contourArea, reverse=True)
-            
-            if(cv.contourArea(sorted_contours[0]) > 4000):
+
+            if(cv.contourArea(sorted_contours[0]) > 700):
                 cv.drawContours(frame, sorted_contours[0], -1, (255, 0, 0), 2)
                 x, y, w, h = cv.boundingRect(sorted_contours[0])
                 cv.rectangle(frame, (x, y), (x+w, y+h), (255, 255, 255), 3)
